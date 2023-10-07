@@ -5,7 +5,7 @@
 require_once '../vendor/autoload.php';
 require_once '../private/config.php';
 
-function get_wifi_info($config) {
+function get_wifi_clients($config) {
     $unifi_connection = new UniFi_API\Client(
         $config['username'],
         $config['password'],
@@ -19,20 +19,7 @@ function get_wifi_info($config) {
 
     $clients = $unifi_connection->list_clients();
 
-    $essids = array();
-
-    foreach ($clients as $client) {
-        $essid = $client->essid;
-        $hostname = $client->hostname;
-
-        if (!array_key_exists($essid, $essids)) {
-            $essids[$essid] = array();
-        }
-
-        array_push($essids[$essid], $hostname);
-    }
-
-    return $essids;
+    return $clients;
 };
 
 
@@ -98,18 +85,39 @@ function get_lan_info($config) {
                             $config['username'],
                             $config['password']);
 
-    $dhcp_leases = edgeos_get_data($api_root, 'dhcp_leases', $cookies);
+    $response = edgeos_get_data($api_root, 'dhcp_leases', $cookies);
+    $obj = json_decode($response);
+    $dhcp_leases = $obj->output->{'dhcp-server-leases'};
 
     return $dhcp_leases;
 };
 
 
+function combine($wifi_clients, $lan_info) {
+    foreach($lan_info as $server => $leases) {
+        foreach($leases as $lease) {
+            $mac = $lease->mac;
+
+            foreach($wifi_clients as $wifi_client) {
+                if ($wifi_client->mac == $mac) {
+                    $lease->wifi = $wifi_client;
+                }
+            }
+        }
+    }
+
+    return $lan_info;
+};
+
+
 function main($config) {
-    $wifi_info = get_wifi_info($config['unifi']);
+    $wifi_clients = get_wifi_clients($config['unifi']);
     $lan_info = get_lan_info($config['edgeos']);
 
-    print_r($wifi_info);
-    print_r($lan_info);
+    $output = combine($wifi_clients, $lan_info);
+
+    header('Content-Type: application/json');
+    echo json_encode($output);
 };
 
 
