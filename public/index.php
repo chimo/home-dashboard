@@ -43,19 +43,68 @@ function get_lan_info($config) {
 
 
 function combine($wifi_clients, $lan_info) {
+    /*
+        [
+            'network': {
+                'name': 'fsoc',
+                'clients': [
+                    'mac': 'xxx',
+                    'hostname': '',
+                    'ipv4': 'yyy',
+                    'is_guest': true|false,
+                    'is_wifi': true|false,
+                ]
+            }
+        ]
+     */
+
+    $networks = [];
+
     foreach($lan_info as $server => $leases) {
-        foreach($leases as $lease) {
+        $network = [
+            'name' => $server,
+            'clients' => []
+        ];
+
+        if (!is_object($leases)) {
+            continue;
+        }
+
+        foreach($leases as $ipv4 => $lease) {
             $mac = $lease->mac;
+            $is_wifi = false;
+            $is_guest = false;
 
             foreach($wifi_clients as $wifi_client) {
                 if ($wifi_client->mac == $mac) {
-                    $lease->wifi = $wifi_client;
+                    $is_wifi = true;
+
+                    $is_guest = $wifi_client->is_guest;
+                    break;
                 }
             }
+
+            $client = [
+                'mac' => $mac,
+                'hostname' => $lease->{'client-hostname'},
+                'ipv4' => $ipv4
+            ];
+
+            if ($is_wifi === true) {
+                $client['wifi'] = [
+                    'is_guest' => $is_guest
+                ];
+            } else {
+                $client['wifi'] = null;
+            }
+
+            $network['clients'][] = $client;
         }
+
+        $networks[] = $network;
     }
 
-    return $lan_info;
+    return $networks;
 }
 
 
@@ -64,7 +113,7 @@ function view($template, $params) {
 
     $root_dir = __DIR__ . '/../private';
     $cache_dir = $root_dir . '/cache/templates';
-    $template_dir = $root_dir . '/templates/templates';
+    $template_dir = $root_dir . '/templates';
 
     // Initialize the Latte engine
     $latte = new Latte\Engine;
@@ -77,7 +126,7 @@ function view($template, $params) {
     $latte->setautoRefresh();
 
     // Render the index.latte template
-    $latte->render("$template_dir/$template");
+    $latte->render("$template_dir/$template", $params);
 }
 
 
@@ -87,10 +136,15 @@ function main($config) {
 
     $output = combine($wifi_clients, $lan_info);
 
-    view('index.latte', $output);
+    view(
+        'index.latte',
+        [
+            'networks' => $output
+        ]
+    );
 
-    // header('Content-Type: application/json');
-    // echo json_encode($output);
+    //header('Content-Type: application/json');
+    //echo json_encode($output, JSON_PRETTY_PRINT);
 }
 
 

@@ -1,0 +1,32 @@
+{define networkBuilder $networks}
+    {foreach $networks as $network}
+        <table>
+            <caption>{$network['name']}</caption>
+            <thead>
+                <tr>
+                    <th>w</th>
+                    <th>Hostname</th>
+                    <th>MAC</th>
+                    <th>IPv4</th>
+                </tr>
+            </thead>
+            <tbody>
+                {foreach $network['clients'] as $client}
+                    <tr>
+                        <td>
+                            {if $client['wifi']}
+                                Y
+                            {else}
+                                N
+                            {/if}
+                        </td>
+                        <td>{$client['hostname']}</td>
+                        <td>{$client['mac']}</td>
+                        <td>{$client['ipv4']}</td>
+                    </tr>
+                {/foreach}
+            </tbody>
+        </table>
+    {/foreach}	
+{/define}
+

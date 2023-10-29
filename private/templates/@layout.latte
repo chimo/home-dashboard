@@ -1,10 +1,11 @@
-{* Here we define blocks that can be overridden in child templates *}
+{import '@networks.latte'}
+
 <!DOCTYPE html>
 <html>
 	<head>
 		{block head}
 			<link rel="stylesheet" href="style.css" />
-			<title>{block title|stripHtml|trim}{/block} - My Webpage</title>
+			<title>{block title|stripHtml|trim}{/block} - Dashboard</title>
 		{/block}
 	</head>
 
