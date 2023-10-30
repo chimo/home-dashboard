@@ -1,0 +1,39 @@
+.dataTables_length,
+.dataTables_filters {
+    margin-bottom: 12px;
+}
+
+.dataTables_wrapper {
+    margin-bottom: 24px;
+}
+
+table.network {
+    border: 0;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+}
+
+.network caption {
+    background: #0747a6;
+    border: 1px solid #000;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    color: #fff;
+    font-weight: bold;
+    padding: 12px 8px;
+    text-align: left
+}
+
+.network th {
+    background: #91b7f1;
+}
+
+.network td, th {
+    border: 1px solid #000;
+    padding: 12px 8px;
+}
+
+.network tr:nth-child(even) td {
+    background: #deebff;
+}
+

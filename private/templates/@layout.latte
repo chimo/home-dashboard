@@ -1,23 +1,23 @@
-{import '@networks.latte'}
-
 <!DOCTYPE html>
 <html>
-	<head>
-		{block head}
-			<link rel="stylesheet" href="style.css" />
-			<title>{block title|stripHtml|trim}{/block} - Dashboard</title>
-		{/block}
-	</head>
+    <head>
+        {block head}
+            <script>document.querySelector('html').classList.add('js')</script>
+            <link rel="stylesheet" href="/css/styles.css" />
+            <link rel="stylesheet" href="//cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+            <title>{block title|stripHtml|trim}{/block} - Dashboard</title>
+        {/block}
+    </head>
 
-	<body>
-		<div id="content">
-			{block content}{/block}
-		</div>
+    <body>
+        <div id="content">
+            {block content}{/block}
+        </div>
 
-		<div id="footer">
-			{block footer}
-				&copy; Copyright {=date('Y')} by <a href="http://example.com">you</a>
-			{/block}
-		</div>
-	</body>
+        <div id="footer">
+            {block footer}
+                .
+            {/block}
+        </div>
+    </body>
 </html>

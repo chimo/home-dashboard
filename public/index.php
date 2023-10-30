@@ -51,8 +51,9 @@ function combine($wifi_clients, $lan_info) {
                     'mac': 'xxx',
                     'hostname': '',
                     'ipv4': 'yyy',
-                    'is_guest': true|false,
-                    'is_wifi': true|false,
+                    'wifi': {
+                        'is_guest': true|false
+                    }
                 ]
             }
         ]
@@ -72,30 +73,24 @@ function combine($wifi_clients, $lan_info) {
 
         foreach($leases as $ipv4 => $lease) {
             $mac = $lease->mac;
-            $is_wifi = false;
-            $is_guest = false;
-
-            foreach($wifi_clients as $wifi_client) {
-                if ($wifi_client->mac == $mac) {
-                    $is_wifi = true;
-
-                    $is_guest = $wifi_client->is_guest;
-                    break;
-                }
-            }
 
             $client = [
                 'mac' => $mac,
                 'hostname' => $lease->{'client-hostname'},
-                'ipv4' => $ipv4
+                'ipv4' => $ipv4,
+                'wifi' => null
             ];
 
-            if ($is_wifi === true) {
-                $client['wifi'] = [
-                    'is_guest' => $is_guest
-                ];
-            } else {
-                $client['wifi'] = null;
+            foreach($wifi_clients as $wifi_client) {
+                if ($wifi_client->mac == $mac) {
+
+                    $client['wifi'] = [
+                        'is_guest' => $wifi_client->is_guest,
+                        'satisfaction' => $wifi_client->satisfaction_real
+                    ];
+
+                    break;
+                }
             }
 
             $network['clients'][] = $client;
@@ -143,8 +138,10 @@ function main($config) {
         ]
     );
 
-    //header('Content-Type: application/json');
-    //echo json_encode($output, JSON_PRETTY_PRINT);
+    /*
+    header('Content-Type: application/json');
+    echo json_encode($output, JSON_PRETTY_PRINT);
+    */
 }
 
 
