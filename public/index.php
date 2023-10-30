@@ -42,18 +42,26 @@ function get_lan_info($config) {
 }
 
 
-function combine($wifi_clients, $lan_info) {
+function combine_network_clients($wifi_clients, $lan_info) {
     /*
         [
             'network': {
-                'name': 'fsoc',
+                'name': 'string',
                 'clients': [
-                    'mac': 'xxx',
-                    'hostname': '',
-                    'ipv4': 'yyy',
+                    'mac': 'string',
+                    'hostname': 'string',
+                    'ipv4': 'string',
                     'wifi': {
-                        'is_guest': true|false
-                    }
+                        'is_guest': true|false,
+                        'satisfaction': int
+                    },
+                    'pending_updates': [
+                        {
+                            'package_name': 'string',
+                            'local_version': 'string',
+                            'latest_version': 'string'
+                        }
+                    ]
                 ]
             }
         ]
@@ -78,7 +86,8 @@ function combine($wifi_clients, $lan_info) {
                 'mac' => $mac,
                 'hostname' => $lease->{'client-hostname'},
                 'ipv4' => $ipv4,
-                'wifi' => null
+                'wifi' => null,
+                'pending_updates' => []
             ];
 
             foreach($wifi_clients as $wifi_client) {
@@ -125,11 +134,52 @@ function view($template, $params) {
 }
 
 
-function main($config) {
+function get_update_info() {
+    // TODO: Get this from REST API (doesn't exist yet)
+    $str = file_get_contents('../desktop-container-updates.json');
+    $json = json_decode($str);
+
+    return $json;
+}
+
+
+function get_network_clients($config) {
     $wifi_clients = get_wifi_clients($config['unifi']);
     $lan_info = get_lan_info($config['edgeos']);
+    $output = combine_network_clients($wifi_clients, $lan_info);
 
-    $output = combine($wifi_clients, $lan_info);
+    return $output;
+}
+
+
+function combine_updates($networks, $updates) {
+    foreach($updates as $update) {
+        $mac = $update->mac;
+
+        foreach($networks as &$network) {
+            $clients = $network['clients'];
+
+            foreach($clients as &$client) {
+                if ($client['mac'] === $mac) {
+                    $client['pending_updates'] = $update->updates;
+
+                    break;
+                }
+            }
+
+            $network['clients'] = $clients;
+        }
+    }
+
+    return $networks;
+}
+
+
+function main($config) {
+    $networks = get_network_clients($config);
+    $updates = get_update_info();
+
+    $output = combine_updates($networks, $updates);
 
     view(
         'index.latte',

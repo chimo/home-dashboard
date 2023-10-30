@@ -7,6 +7,7 @@
                 <th>Hostname</th>
                 <th>MAC</th>
                 <th>IPv4</th>
+                <th>Pending Updates</th>
             </tr>
         </thead>
         <tbody>
@@ -26,6 +27,7 @@
                     <td>{$client['hostname']}</td>
                     <td>{$client['mac']}</td>
                     <td>{$client['ipv4']}</td>
+                    <td>{count($client['pending_updates'])}</td>
                 </tr>
             {/foreach}
         </tbody>
