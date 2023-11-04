@@ -87,7 +87,7 @@ function combine_network_clients($wifi_clients, $lan_info) {
                 'hostname' => $lease->{'client-hostname'},
                 'ipv4' => $ipv4,
                 'wifi' => null,
-                'pending_updates' => []
+                'pending_updates' => null
             ];
 
             foreach($wifi_clients as $wifi_client) {
@@ -134,12 +134,17 @@ function view($template, $params) {
 }
 
 
-function get_update_info() {
-    // TODO: Get this from REST API (doesn't exist yet)
-    $str = file_get_contents('../desktop-container-updates.json');
-    $json = json_decode($str);
+function get_update_info($links) {
+    $all_containers = [];
 
-    return $json;
+    foreach($links as $link) {
+        $response = file_get_contents($link);
+        $json = json_decode($response);
+        $containers = $json->containers;
+        $all_containers = array_merge($all_containers, $containers);
+    }
+
+    return $all_containers;
 }
 
 
@@ -177,7 +182,7 @@ function combine_updates($networks, $updates) {
 
 function main($config) {
     $networks = get_network_clients($config);
-    $updates = get_update_info();
+    $updates = get_update_info($config['update_links']);
 
     $output = combine_updates($networks, $updates);
 

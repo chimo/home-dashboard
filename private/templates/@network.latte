@@ -27,7 +27,13 @@
                     <td>{$client['hostname']}</td>
                     <td>{$client['mac']}</td>
                     <td>{$client['ipv4']}</td>
-                    <td>{count($client['pending_updates'])}</td>
+                    <td>
+                      {if $client['pending_updates'] === null}
+                          -
+                      {else}
+                          {count($client['pending_updates'])}
+                      {/if}
+                    </td>
                 </tr>
             {/foreach}
         </tbody>
