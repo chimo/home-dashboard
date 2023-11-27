@@ -7,6 +7,7 @@
                 <th>Hostname</th>
                 <th>MAC</th>
                 <th>IPv4</th>
+                <th>DHCP</th>
                 <th>Pending Updates</th>
             </tr>
         </thead>
@@ -27,6 +28,7 @@
                     <td>{$client['hostname']}</td>
                     <td>{$client['mac']}</td>
                     <td>{$client['ipv4']}</td>
+                    <td>{$client['type']}</td>
                     <td>
                       {if $client['pending_updates'] === null}
                           -

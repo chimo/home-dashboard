@@ -1,7 +1,5 @@
 <?php
 
-// Not much to see here, yet...
-
 require_once '../vendor/autoload.php';
 require_once '../private/config.php';
 
@@ -22,11 +20,121 @@ function get_wifi_clients($config) {
 
     $clients = $unifi_connection->list_clients();
 
-    return $clients;
+    /*
+     * {
+     *    'mac': {
+     *      'hostname': 'string',
+     *      'ipv4': 'string',
+     *      'mac': 'string',
+     *      'network': 'string',
+     *      'wifi': {
+     *        'is_guest': true|false,
+     *        'satisfaction': int
+     *      }
+     *   }
+     * }
+     */
+
+    $clients_by_mac = [];
+
+    foreach($clients as $client) {
+        $mac = $client->mac;
+
+        $clients_by_mac[$mac] = [
+            'network' => $client->essid,
+            'hostname' => $client->hostname,
+            'ipv4' => $client->ip,
+            'wifi' => [
+                'is_guest' => $client->is_guest,
+                'satisfaction' => $client->satisfaction
+            ]
+        ];
+    }
+
+    return $clients_by_mac;
 }
 
 
-function get_lan_info($config) {
+function get_dhcp_leases($client) {
+    $data = $client->get_dhcp_leases();
+    $networks = $data->{'dhcp-server-leases'};
+
+    /*
+     * {
+     *   'mac': {
+     *     'hostname': 'string',
+     *     'ipv4': 'string',
+     *     'mac': 'string',
+     *     'network': 'string',
+     *     'type': 'string'
+     *   }
+     * }
+     */
+
+    $leases = [];
+
+    foreach($networks as $network_name => $lease) {
+        foreach($lease as $ipv4 => $lease_info) {
+            $mac = $lease_info->mac;
+
+            $leases[$mac] = [
+                'ipv4' => $ipv4,
+                'mac' => $mac,
+                'hostname' => $lease_info->{'client-hostname'},
+                'network' => $network_name,
+                'type' => 'lease'
+            ];
+        }
+    }
+
+    return $leases;
+}
+
+
+function get_dhcp_reservations($client) {
+    $response = $client->get_settings_section('{"service": null}');
+    $servers = $response->GET->service->{'dhcp-server'}
+                                      ->{'shared-network-name'};
+
+    $dhcp_reservations = [];
+
+    /*
+     * {
+     *   'mac': {
+     *     'hostname': 'string',
+     *     'ipv4': 'string',
+     *     'mac': 'string',
+     *     'network': 'string',
+     *     'type': 'string'
+     *   }
+     * }
+     */
+
+    foreach($servers as $server_name => $server) {
+        $subnets = $server->subnet;
+
+        foreach($subnets as $subnet_range => $subnet) {
+            if (isset($subnet->{'static-mapping'})) {
+                $mappings = $subnet->{'static-mapping'};
+
+                foreach($mappings as $name => $mapping) {
+                    $dhcp_reservations[$mapping->{'mac-address'}] = [
+                        'hostname' => $name,
+                        'ipv4' => $mapping->{'ip-address'},
+                        'mac' => $mapping->{'mac-address'},
+                        'network' => $server_name,
+                        'type' => 'dhcp_reservation'
+                    ];
+                }
+            }
+        }
+    }
+
+    return $dhcp_reservations;
+}
+
+
+function get_edgeos_client($config) {
     $client = new EdgeOS_API\Client(
         $config['username'],
         $config['password'],
@@ -35,80 +143,7 @@ function get_lan_info($config) {
 
     $client->login();
 
-    $data = $client->get_dhcp_leases();
-    $dhcp_leases = $data->{'dhcp-server-leases'};
-
-    return $dhcp_leases;
-}
-
-
-function combine_network_clients($wifi_clients, $lan_info) {
-    /*
-        [
-            'network': {
-                'name': 'string',
-                'clients': [
-                    'mac': 'string',
-                    'hostname': 'string',
-                    'ipv4': 'string',
-                    'wifi': {
-                        'is_guest': true|false,
-                        'satisfaction': int
-                    },
-                    'pending_updates': [
-                        {
-                            'package_name': 'string',
-                            'local_version': 'string',
-                            'latest_version': 'string'
-                        }
-                    ]
-                ]
-            }
-        ]
-     */
-
-    $networks = [];
-
-    foreach($lan_info as $server => $leases) {
-        $network = [
-            'name' => $server,
-            'clients' => []
-        ];
-
-        if (!is_object($leases)) {
-            continue;
-        }
-
-        foreach($leases as $ipv4 => $lease) {
-            $mac = $lease->mac;
-
-            $client = [
-                'mac' => $mac,
-                'hostname' => $lease->{'client-hostname'},
-                'ipv4' => $ipv4,
-                'wifi' => null,
-                'pending_updates' => null
-            ];
-
-            foreach($wifi_clients as $wifi_client) {
-                if ($wifi_client->mac == $mac) {
-
-                    $client['wifi'] = [
-                        'is_guest' => $wifi_client->is_guest,
-                        'satisfaction' => $wifi_client->satisfaction_real
-                    ];
-
-                    break;
-                }
-            }
-
-            $network['clients'][] = $client;
-        }
-
-        $networks[] = $network;
-    }
-
-    return $networks;
+    return $client;
 }
 
 
@@ -141,7 +176,10 @@ function get_update_info($links) {
         $response = file_get_contents($link);
         $json = json_decode($response);
         $containers = $json->containers;
-        $all_containers = array_merge($all_containers, $containers);
+
+        if (is_array($containers)) {
+            $all_containers = array_merge($all_containers, $containers);
+        }
     }
 
     return $all_containers;
@@ -150,41 +188,91 @@ function get_update_info($links) {
 
 function get_network_clients($config) {
     $wifi_clients = get_wifi_clients($config['unifi']);
-    $lan_info = get_lan_info($config['edgeos']);
-    $output = combine_network_clients($wifi_clients, $lan_info);
+
+    $edgeos_client = get_edgeos_client($config['edgeos']);
+    $dhcp_leases = get_dhcp_leases($edgeos_client);
+    $dhcp_reservations = get_dhcp_reservations($edgeos_client);
+
+    // Combine data based on mac address
+    // (wifi clients also show up on DHCP server)
+    $output = array_replace_recursive($wifi_clients, $dhcp_leases,
+        $dhcp_reservations);
 
     return $output;
 }
 
 
-function combine_updates($networks, $updates) {
-    foreach($updates as $update) {
-        $mac = $update->mac;
+function add_updates($clients, $containers) {
+    foreach($containers as $container) {
+        $mac = $container->mac;
 
-        foreach($networks as &$network) {
-            $clients = $network['clients'];
-
-            foreach($clients as &$client) {
-                if ($client['mac'] === $mac) {
-                    $client['pending_updates'] = $update->updates;
-
-                    break;
-                }
-            }
-
-            $network['clients'] = $clients;
+        if (isset($clients[$mac])) {
+            $clients[$mac]['pending_updates'] = $container->updates;
         }
     }
 
-    return $networks;
+    return $clients;
+}
+
+
+function sort_clients_by_network($clients) {
+    /*
+        [
+            'network': {
+                'name': 'string',
+                'clients': [
+                    'mac': 'string',
+                    'hostname': 'string',
+                    'ipv4': 'string',
+                    'wifi': {
+                        'is_guest': true|false,
+                        'satisfaction': int
+                    },
+                    'pending_updates': [
+                        {
+                            'package_name': 'string',
+                            'local_version': 'string',
+                            'latest_version': 'string'
+                        }
+                    ]
+                ]
+            }
+        ]
+     */
+
+    $networks = [];
+
+    foreach($clients as $client) {
+        $network = $client['network'];
+
+        if (!isset($networks[$network])) {
+            $networks[$network] = [
+                'name' => $network,
+                'clients' => []
+            ];
+        }
+
+        unset($client['network']);
+        $networks[$network]['clients'][] = $client;
+    }
+
+    $output = [];
+
+    foreach($networks as $network) {
+        $output[] = $network;
+    }
+
+    return $output;
 }
 
 
 function main($config) {
-    $networks = get_network_clients($config);
-    $updates = get_update_info($config['update_links']);
+    $clients = get_network_clients($config);
+    $containers_info = get_update_info($config['update_links']);
 
-    $output = combine_updates($networks, $updates);
+    $clients = add_updates($clients, $containers_info);
+
+    $output = sort_clients_by_network($clients);
 
     view(
         'index.latte',
@@ -192,13 +280,9 @@ function main($config) {
             'networks' => $output
         ]
     );
-
-    /*
-    header('Content-Type: application/json');
-    echo json_encode($output, JSON_PRETTY_PRINT);
-    */
 }
 
 
 main($config);
+
 
