@@ -1,0 +1,12 @@
+[Unit]
+Description=Send container updates information
+
+[Service]
+Type=oneshot
+
+# Update these values
+ExecStart=../container-updates/container-updates.sh \
+    -c static \
+    -f /var/www/localhost/htdocs/"%H".json \
+    -r lap
+
