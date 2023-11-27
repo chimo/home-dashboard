@@ -102,12 +102,10 @@ class Client
         $query = '';
 
         if ($node !== null) {
-            $query = urlencode('?' . $node);
+            $query = '?' . $node;
         }
 
         $url = $this->baseurl . '/api/edge/getcfg.json' . $query;
-
-        echo $url;
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -124,11 +122,10 @@ class Client
     }
 
 
-    // FIXME: /api/edge/partial.json returns a 404
-    //        Investigate.
+    // NOTE: Need to be admin, otherwise HTTP 403 is returned
     public function get_settings_section($struct) {
-        $query = urlencode('?struct=' . $struct);
-        $url = $this->baseurl . '/api/edge/partial.json' . $query;
+        $query = urlencode($struct);
+        $url = $this->baseurl . '/api/edge/partial.json?struct=' . $query;
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
