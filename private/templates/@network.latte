@@ -9,6 +9,7 @@
                 <th>IPv4</th>
                 <th>DHCP</th>
                 <th>Pending Updates</th>
+                <th>Is Online?</th>
             </tr>
         </thead>
         <tbody>
@@ -36,6 +37,7 @@
                           {count($client['pending_updates'])}
                       {/if}
                     </td>
+                    <td>{$client['is_online']}</td>
                 </tr>
             {/foreach}
         </tbody>

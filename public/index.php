@@ -265,9 +265,28 @@ function group_clients_by_network($clients) {
     return $output;
 }
 
+// This isn't very good or efficient, but just testing things...
+// This requires iputils-ping package since busybox `ping` requires root
+function add_ping_info($clients) {
+    $results = [];
+
+    foreach($clients as $mac => $client) {
+        $ipv4 = $client['ipv4'];
+
+        exec('/bin/ping -c 1 -W 2 ' . $ipv4, $output, $return_code);
+
+        $client['is_online'] = ($return_code == 0);
+        $results[$mac] = $client;
+    }
+
+    return $results;
+}
+
 
 function main($config) {
     $clients = get_network_clients($config);
+    $clients = add_ping_info($clients);
+
     $containers_info = get_update_info($config['update_links']);
 
     $clients = add_updates($clients, $containers_info);
