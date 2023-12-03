@@ -215,7 +215,7 @@ function add_updates($clients, $containers) {
 }
 
 
-function sort_clients_by_network($clients) {
+function group_clients_by_network($clients) {
     /*
         [
             'network': {
@@ -272,7 +272,7 @@ function main($config) {
 
     $clients = add_updates($clients, $containers_info);
 
-    $output = sort_clients_by_network($clients);
+    $output = group_clients_by_network($clients);
 
     view(
         'index.latte',
